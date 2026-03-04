@@ -4,34 +4,37 @@ import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin SDK
+let firebaseInitialized = false;
 if (!getApps().length) {
   if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.VITE_FIREBASE_PROJECT_ID) {
-    console.error("Missing Firebase Admin SDK environment variables:", {
-      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
-      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-      hasProjectId: !!process.env.VITE_FIREBASE_PROJECT_ID
+    console.warn("Missing Firebase Admin SDK environment variables. Auth will be disabled.");
+  } else {
+    console.log("Initializing Firebase Admin SDK...");
+    initializeApp({
+      credential: cert({
+        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
     });
-    throw new Error("Missing Firebase Admin SDK environment variables");
+    firebaseInitialized = true;
+    console.log("Firebase Admin SDK initialized successfully");
   }
-
-  console.log("Initializing Firebase Admin SDK...");
-  initializeApp({
-    credential: cert({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    }),
-  });
-  console.log("Firebase Admin SDK initialized successfully");
+} else {
+  firebaseInitialized = true;
 }
 
 export async function setupFirebaseAuth(app: Express) {
   // Sync user with backend after Firebase authentication
   app.post("/api/auth/sync", async (req, res) => {
     try {
+      if (!firebaseInitialized) {
+        return res.status(503).json({ error: "Auth service not configured" });
+      }
+
       console.log("Auth sync request received:", req.body);
       const { idToken, uid, email, displayName, photoURL } = req.body;
-      
+
       if (!idToken) {
         console.error("Missing ID token in sync request");
         return res.status(400).json({ error: "Missing ID token" });

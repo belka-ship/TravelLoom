@@ -1,17 +1,20 @@
 import OpenAI from "openai";
 
 if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is required");
+  console.warn("OPENAI_API_KEY not found. AI functionality will be disabled.");
 }
 
 // Using OpenAI's o3 model for enhanced reasoning capabilities in travel advisory responses
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 export async function generateTravelAdvisorResponse(
   userMessage: string,
   conversationHistory: Array<{ role: string; content: string }> = [],
 ): Promise<string> {
   console.log("Attempting to call OpenAI o3 with simple input format");
+  if (!openai) {
+    return "AI is not configured. Please set the OPENAI_API_KEY environment variable.";
+  }
   try {
     const response = await openai.responses.create({
       model: "o3-2025-04-16",
@@ -48,6 +51,7 @@ export async function generateTravelAdvisorResponse(
 export async function generateConversationTitle(
   firstMessage: string,
 ): Promise<string> {
+  if (!openai) return "Travel Consultation";
   try {
     const response = await openai.responses.create({
       model: "o3-2025-04-16",
