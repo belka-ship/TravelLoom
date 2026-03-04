@@ -1,5 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, getRedirectResult, signOut, onAuthStateChanged, type User, browserLocalPersistence, setPersistence } from "firebase/auth";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -9,53 +18,43 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-console.log("Firebase config:", {
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasProjectId: !!firebaseConfig.projectId,
-  hasAppId: !!firebaseConfig.appId,
-  authDomain: firebaseConfig.authDomain,
-});
+const isConfigured = !!(
+  firebaseConfig.apiKey &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId
+);
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-
-// Set persistence to local (browser storage)
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error("Failed to set auth persistence:", error);
-});
+export const auth = isConfigured
+  ? (() => {
+      const app = initializeApp(firebaseConfig);
+      const authInstance = getAuth(app);
+      setPersistence(authInstance, browserLocalPersistence).catch((error) => {
+        console.error("Failed to set auth persistence:", error);
+      });
+      return authInstance;
+    })()
+  : null;
 
 const provider = new GoogleAuthProvider();
 
-// Sign in with Google (using popup for better debugging)
 export const signInWithGoogle = () => {
-  console.log("Initiating Google sign in with popup...");
-  provider.addScope('email');
-  provider.addScope('profile');
-  return signInWithPopup(auth, provider).then(result => {
-    console.log("Popup sign in successful:", result.user);
-    return result;
-  }).catch(error => {
-    console.error("Popup sign in failed:", error);
-    throw error;
-  });
+  if (!auth) return Promise.reject(new Error("Firebase not configured"));
+  provider.addScope("email");
+  provider.addScope("profile");
+  return signInWithPopup(auth, provider);
 };
 
-// Sign out
 export const signOutUser = () => {
+  if (!auth) return Promise.resolve();
   return signOut(auth);
 };
 
-// Handle redirect result
 export const handleRedirectResult = () => {
-  console.log("Getting redirect result...");
-  return getRedirectResult(auth).then(result => {
-    console.log("Redirect result received:", result);
-    return result;
-  }).catch(error => {
+  if (!auth) return Promise.resolve(null);
+  return getRedirectResult(auth).catch((error) => {
     console.error("Error in getRedirectResult:", error);
     throw error;
   });
 };
 
-// Auth state observer
 export { onAuthStateChanged } from "firebase/auth";

@@ -6,11 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!auth);
   const [shouldShowPricing, setShouldShowPricing] = useState(false);
   useEffect(() => {
+    if (!auth) return;
     let syncInProgress = false;
-    
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("Auth state changed:", firebaseUser ? "User signed in" : "User signed out");
       
